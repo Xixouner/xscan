@@ -80,5 +80,29 @@ def result_to_dict(result: ScanResult) -> dict:
     }
 
 
+def render_diff(report: dict, console: Console) -> None:
+    old_score, new_score, delta = report["old_score"], report["new_score"], report["delta"]
+    style = "green" if delta > 0 else "red" if delta < 0 else "yellow"
+    console.print(Panel(f"{report['targets']['old']}  →  {report['targets']['new']}\n"
+                        f"score : {old_score} → {new_score}  ([bold {style}]{delta:+d}[/])",
+                        title="diff xscan", expand=False))
+    added = Table(title=f"Nouveaux constats ({len(report['added'])})", title_justify="left")
+    resolved = Table(title=f"Constats résolus ({len(report['resolved'])})", title_justify="left")
+    for table in (added, resolved):
+        for column in ("Module", "Sévérité", "Constat"):
+            table.add_column(column, overflow="fold")
+    for finding in report["added"]:
+        added.add_row(finding.get("module", "—"),
+                      f"[{_severity_style(str(finding.get('severity', 'info')))}]{finding.get('severity', '—')}[/]",
+                      str(finding.get("title", "—")))
+    for finding in report["resolved"]:
+        resolved.add_row(finding.get("module", "—"),
+                         f"[{_severity_style(str(finding.get('severity', 'info')))}]{finding.get('severity', '—')}[/]",
+                         str(finding.get("title", "—")))
+    console.print(added)
+    console.print(resolved)
+    console.print(f"[dim]{report['kept_count']} constat(s) inchangé(s)[/]")
+
+
 def render_json(result: ScanResult) -> str:
     return json.dumps(result_to_dict(result), indent=2, ensure_ascii=False)

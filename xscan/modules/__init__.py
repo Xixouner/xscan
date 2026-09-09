@@ -6,8 +6,9 @@ from xscan.modules import (
     fingerprint,
     forms,
     headers,
+    nuclei,
     subdomains,
     transport,
 )
 
-ALL_MODULES = [transport, headers, fingerprint, subdomains, endpoints, forms, exposure]
+ALL_MODULES = [transport, headers, fingerprint, subdomains, endpoints, forms, exposure, nuclei]

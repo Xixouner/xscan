@@ -18,6 +18,8 @@ xscan scan exemple.com              # analyse complète (passif + actif léger)
 xscan scan exemple.com --passive    # modules passifs uniquement
 xscan scan exemple.com --json       # sortie JSON pure (stdout)
 xscan scan exemple.com -o rapport.json
+xscan scan exemple.com --html rapport.html   # rapport HTML autonome (pour un client)
+xscan diff ancien.json recent.json  # nouveaux constats / résolus / évolution du score
 xscan modules                       # liste des modules
 ```
 
@@ -32,6 +34,7 @@ xscan modules                       # liste des modules
 | `endpoints` | oui | Chemins et endpoints extraits du JavaScript livré (api, admin, config…) |
 | `forms` | oui | Formulaires : CSRF absent, password en GET/HTTP, action cross-origin |
 | `exposure` | non | `.env`, `.git/HEAD`, `.DS_Store`, `server-status`, `/actuator/health`, secrets (AWS, Stripe, GitHub, Slack, Resend, Google) dans les pages et scripts JS — requêtes parallèles (semaphore) |
+| `nuclei` | non | Orchestration optionnelle de [nuclei](https://github.com/projectdiscovery/nuclei) si installé (désactivé proprement sinon) |
 
 Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité, une preuve et une remédiation. Le score global part de 100 et baisse selon les sévérités (critique −30, high −20, medium −10, low −5).
 
@@ -40,7 +43,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
@@ -66,7 +69,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ## Roadmap
 
 - ~~Phase 2 — Recon~~ **fait** : sous-domaines (crt.sh + DNS), endpoints du JS, formulaires, parallélisme
-- **Phase 3 — Pro** : rapport HTML pour clients, orchestration optionnelle de `nuclei`, comparaison entre deux scans
+- ~~Phase 3 — Pro~~ **fait** : rapport HTML autonome, orchestration nuclei, diff entre deux scans
 
 ## Développement
 

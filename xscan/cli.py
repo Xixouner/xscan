@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
 
 import httpx
@@ -9,9 +10,11 @@ from rich.console import Console
 from rich.table import Table
 
 from xscan import __version__
+from xscan.diff import diff_results
 from xscan.http import build_client
 from xscan.modules import ALL_MODULES
-from xscan.output import render_json, render_rich
+from xscan.output import render_diff, render_json, render_rich
+from xscan.report_html import render_html
 from xscan.runner import run_scan
 
 app = typer.Typer(
@@ -48,12 +51,18 @@ async def _scan(target: str, timeout: float, passive_only: bool):
         return await run_scan(client, target, passive_only=passive_only)
 
 
+def _maybe_write_html(result, html_output: Path | None) -> None:
+    if html_output is not None:
+        html_output.write_text(render_html(result), encoding="utf-8")
+
+
 @app.command()
 def scan(
     url: str = typer.Argument(..., help="Cible à analyser (ex: exemple.com)."),
     passive: bool = typer.Option(False, "--passive", help="Modules passifs uniquement."),
     json_output: bool = typer.Option(False, "--json", help="JSON pur sur stdout (agents / pipelines)."),
     output: Path | None = typer.Option(None, "--output", "-o", help="Écrit aussi le JSON dans ce fichier."),
+    html_output: Path | None = typer.Option(None, "--html", help="Écrit un rapport HTML autonome dans ce fichier."),
     timeout: float = typer.Option(10.0, help="Timeout réseau (secondes)."),
 ) -> None:
     """Scanne une cible et affiche les findings."""
@@ -63,6 +72,7 @@ def scan(
         text = render_json(result)
         if output:
             output.write_text(text, encoding="utf-8")
+        _maybe_write_html(result, html_output)
         typer.echo(text)
         return
 
@@ -73,7 +83,34 @@ def scan(
     if output:
         output.write_text(render_json(result), encoding="utf-8")
         console.print(f"[dim]JSON écrit dans {output}[/]")
+    _maybe_write_html(result, html_output)
+    if html_output:
+        console.print(f"[dim]Rapport HTML écrit dans {html_output}[/]")
     render_rich(result, console)
+
+
+def _load_report(path: Path) -> dict:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise typer.BadParameter(f"Fichier illisible ou JSON invalide : {path} ({exc})") from exc
+    if not isinstance(data, dict) or "modules" not in data:
+        raise typer.BadParameter(f"{path} n'est pas un rapport xscan (généré avec `xscan scan --json -o fichier.json`).")
+    return data
+
+
+@app.command()
+def diff(
+    old: Path = typer.Argument(..., help="Ancien rapport JSON."),
+    new: Path = typer.Argument(..., help="Nouveau rapport JSON."),
+    json_output: bool = typer.Option(False, "--json", help="Résultat du diff en JSON."),
+) -> None:
+    """Compare deux rapports JSON de xscan (nouveaux / résolus / score)."""
+    report = diff_results(_load_report(old), _load_report(new))
+    if json_output:
+        typer.echo(json.dumps(report, indent=2, ensure_ascii=False))
+        return
+    render_diff(report, console)
 
 
 @app.command("modules")
