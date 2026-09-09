@@ -22,6 +22,7 @@ xscan scan <url>                 # usage humain
   - phase 2 : subdomains (crt.sh + DNS), endpoints (JS), forms (HTMLParser stdlib)
   - phase 3 : nuclei (subprocess optionnel), report_html (échappé), diff (clé module+id+titre)
   - expert : dns (DoH Cloudflare JSON), tls_deep (handshakes legacy), http_deep (TRACE/Host reflection), sri, ports (TCP connect)
+  - chasse : waf (empreinte WAF/CDN), csp_deep (qualité CSP), pages (crawl + mixed content + stack traces), takeover (CNAME orphelins), redirects_open (open redirect probing)
 - `xscan/doh.py` : helper DNS-over-HTTPS (Cloudflare, JSON, zéro dépendance)
 - `xscan/runner.py` : exécution parallèle (gather, return_exceptions) — un module qui plante ne casse pas le scan
 - `xscan/output.py` : rendu Rich + dict JSON stable

@@ -49,6 +49,11 @@ Sans nuclei, le module se désactive proprement (finding info) — tous les autr
 | `tls_deep` | oui | Protocoles TLS 1.0/1.1 encore acceptés, chaîne de certificats invalide, ciphers faibles |
 | `http_deep` | non | Méthode TRACE (XST), PUT/DELETE annoncés, Host header reflection, security.txt absent (RFC 9116) |
 | `ports` | non | Services sensibles exposés publiquement : Redis, MongoDB, MySQL, PostgreSQL, RDP, SMB, Elasticsearch, FTP, Telnet |
+| `waf` | oui | Détection du WAF/CDN en amont (Cloudflare, Akamai, Sucuri, Imperva, Fastly...) |
+| `csp_deep` | oui | Qualité de la CSP : `unsafe-inline`, `unsafe-eval`, sources wildcard/plain-HTTP |
+| `pages` | non | Crawl interne (~12 pages) : contenu mixte HTTPS, stack traces exposées (Python, PHP, SQL, Java, .NET, Django/Rails) |
+| `takeover` | oui | Subdomain takeover : CNAME orphelin vers S3, GitHub Pages, Heroku, Azure, Shopify... |
+| `redirects_open` | non | Open redirects : injection d'une URL de sonde dans les paramètres de redirection (next=, url=, redirect=...) |
 | `nuclei` | non | Orchestration optionnelle de [nuclei](https://github.com/projectdiscovery/nuclei) si installé (désactivé proprement sinon) |
 
 Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité, une preuve et une remédiation. Le score global part de 100 et baisse selon les sévérités (critique −30, high −20, medium −10, low −5).
@@ -58,7 +63,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},

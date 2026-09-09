@@ -87,7 +87,9 @@ def _unverified() -> ssl.SSLContext:
 
 
 async def _connect(host: str, context: ssl.SSLContext):
-    return await asyncio.wait_for(asyncio.open_connection(host, 443, ssl=context, server_hostname=host), timeout=6)
+    _, writer = await asyncio.wait_for(
+        asyncio.open_connection(host, 443, ssl=context, server_hostname=host), timeout=6)
+    return writer
 
 
 async def _close(writer) -> None:
