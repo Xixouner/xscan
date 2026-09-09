@@ -44,6 +44,11 @@ Sans nuclei, le module se désactive proprement (finding info) — tous les autr
 | `endpoints` | oui | Chemins et endpoints extraits du JavaScript livré (api, admin, config…) |
 | `forms` | oui | Formulaires : CSRF absent, password en GET/HTTP, action cross-origin |
 | `exposure` | non | `.env`, `.git/HEAD`, `.DS_Store`, `server-status`, `/actuator/health`, secrets (AWS, Stripe, GitHub, Slack, Resend, Google) dans les pages et scripts JS — requêtes parallèles (semaphore) |
+| `dns` | oui | Usurpation d'email : SPF absent ou `+all`, DMARC absent, CAA, DNSSEC — via DNS-over-HTTPS |
+| `sri` | oui | Scripts tiers sans Subresource Integrity (risque supply chain) |
+| `tls_deep` | oui | Protocoles TLS 1.0/1.1 encore acceptés, chaîne de certificats invalide, ciphers faibles |
+| `http_deep` | non | Méthode TRACE (XST), PUT/DELETE annoncés, Host header reflection, security.txt absent (RFC 9116) |
+| `ports` | non | Services sensibles exposés publiquement : Redis, MongoDB, MySQL, PostgreSQL, RDP, SMB, Elasticsearch, FTP, Telnet |
 | `nuclei` | non | Orchestration optionnelle de [nuclei](https://github.com/projectdiscovery/nuclei) si installé (désactivé proprement sinon) |
 
 Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité, une preuve et une remédiation. Le score global part de 100 et baisse selon les sévérités (critique −30, high −20, medium −10, low −5).
@@ -53,7 +58,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
