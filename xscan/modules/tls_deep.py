@@ -25,7 +25,22 @@ async def run(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
             findings.append(Finding(f"{_ID}010", name, Severity.MEDIUM, f"Protocole {label} encore accepté",
                                     f"handshake {label} réussi sur {url.host}", "Désactiver les protocoles TLS < 1.2."))
     findings.extend(await _chain_and_cipher(url.host))
+    findings.extend(await _hsts_preload(client, url.host))
     return findings
+
+
+async def _hsts_preload(client: httpx.AsyncClient, host: str) -> list[Finding]:
+    """Liste de préchargement HSTS des navigateurs (API publique hstspreload.org)."""
+    try:
+        response = await client.get(f"https://hstspreload.org/api/v2/status?domain={host}", follow_redirects=True)
+        status = str(response.json().get("status", "unknown"))
+    except (httpx.HTTPError, ValueError):
+        return []
+    if status in ("unknown", "absent"):
+        return [Finding(f"{_ID}030", name, Severity.INFO, "Domaine absent de la HSTS preload list",
+                        f"statut : {status}",
+                        "Une fois HSTS stable (max-age long + preload), soumettre sur hstspreload.org.")]
+    return [Finding(f"{_ID}031", name, Severity.INFO, f"HSTS preload : {status}", host, "—")]
 
 
 async def _handshake_ok(host: str, version: ssl.TLSVersion) -> bool:

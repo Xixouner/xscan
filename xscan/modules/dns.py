@@ -10,6 +10,7 @@ passive = True
 DESCRIPTION = "Usurpation email (SPF/DMARC), CAA, DNSSEC via DNS-over-HTTPS"
 
 _ID = "XSCAN-DNS"
+_DKIM_SELECTORS = ("default", "google", "selector1", "selector2", "k1", "s1", "mail", "resend")
 
 
 async def run(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
@@ -20,7 +21,18 @@ async def run(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
     dmarc = await dns_query(client, f"_dmarc.{domain}", "TXT")
     caa = await dns_query(client, domain, "CAA")
     ds = await dns_query(client, domain, "DS")
-    return spf_findings(txt) + dmarc_findings(dmarc) + caa_findings(caa) + dnssec_findings(ds)
+    dkim = await _dkim_probe(client, domain)
+    return spf_findings(txt) + dmarc_findings(dmarc) + caa_findings(caa) + dnssec_findings(ds) + dkim
+
+
+async def _dkim_probe(client: httpx.AsyncClient, domain: str) -> list[Finding]:
+    """Sélecteurs DKIM communs : informatif seulement (l'absence n'est pas un défaut)."""
+    for selector in _DKIM_SELECTORS:
+        records = await dns_query(client, f"{selector}._domainkey.{domain}", "TXT")
+        if any("p=" in record for record in records):
+            return [Finding(f"{_ID}-006", name, Severity.INFO, f"DKIM trouvé (sélecteur {selector})",
+                            f"{selector}._domainkey.{domain}", "—")]
+    return []
 
 
 def spf_findings(txt_records: list[str]) -> list[Finding]:
