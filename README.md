@@ -72,7 +72,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.8.0",
+  "version": "0.9.1",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},

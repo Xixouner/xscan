@@ -96,6 +96,7 @@ def scan(
         if output:
             output.write_text(text, encoding="utf-8")
         _maybe_write_sarif(result, sarif_output)
+        _maybe_write_html(result, html_output)
         typer.echo(text)
         return
 
