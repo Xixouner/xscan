@@ -18,6 +18,7 @@ from xscan.modules import ALL_MODULES
 from xscan.output import render_diff, render_json, render_rich
 from xscan.report_html import render_html
 from xscan.runner import run_scan
+from xscan.sarif import to_sarif
 from xscan.setup_nuclei import install as install_nuclei_binary
 
 app = typer.Typer(
@@ -49,8 +50,8 @@ def _normalize(url: str) -> str:
     return str(parsed)
 
 
-async def _scan(target: str, timeout: float, passive_only: bool):
-    async with build_client(timeout) as client:
+async def _scan(target: str, timeout: float, passive_only: bool, extra_headers: dict[str, str] | None = None):
+    async with build_client(timeout, extra_headers) as client:
         return await run_scan(client, target, passive_only=passive_only)
 
 
@@ -66,30 +67,49 @@ def scan(
     json_output: bool = typer.Option(False, "--json", help="JSON pur sur stdout (agents / pipelines)."),
     output: Path | None = typer.Option(None, "--output", "-o", help="Écrit aussi le JSON dans ce fichier."),
     html_output: Path | None = typer.Option(None, "--html", help="Écrit un rapport HTML autonome dans ce fichier."),
+    sarif_output: Path | None = typer.Option(None, "--sarif", help="Rapport SARIF 2.1.0 (GitHub Code Scanning)."),
+    cookie: str | None = typer.Option(None, "--cookie", help="Cookie de session pour scanner authentifié."),
+    header: list[str] = typer.Option([], "--header", "-H", help="En-tête supplémentaire (répétable, 'Nom: valeur')."),
     timeout: float = typer.Option(10.0, help="Timeout réseau (secondes)."),
 ) -> None:
     """Scanne une cible et affiche les findings."""
     target = _normalize(url)
+    extra_headers: dict[str, str] = {}
+    if cookie:
+        extra_headers["Cookie"] = cookie
+    for raw_header in header:
+        if ":" in raw_header:
+            key, value = raw_header.split(":", 1)
+            extra_headers[key.strip()] = value.strip()
     if json_output:
-        result = asyncio.run(_scan(target, timeout, passive))
+        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None))
         text = render_json(result)
         if output:
             output.write_text(text, encoding="utf-8")
-        _maybe_write_html(result, html_output)
+        _maybe_write_sarif(result, sarif_output)
         typer.echo(text)
         return
 
     console.print("[bold]xscan[/] — rappel : n'analyser que des cibles autorisées.")
-    console.print(f"Cible : [cyan]{target}[/] | modules : {'passifs' if passive else 'tous'}")
+    console.print(f"Cible : [cyan]{target}[/] | modules : {'passifs' if passive else 'tous'}"
+                  f"{' | authentifié' if extra_headers else ''}")
     with console.status("Scan en cours…"):
-        result = asyncio.run(_scan(target, timeout, passive))
+        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None))
     if output:
         output.write_text(render_json(result), encoding="utf-8")
         console.print(f"[dim]JSON écrit dans {output}[/]")
+    _maybe_write_sarif(result, sarif_output)
+    if sarif_output:
+        console.print(f"[dim]SARIF écrit dans {sarif_output}[/]")
     _maybe_write_html(result, html_output)
     if html_output:
         console.print(f"[dim]Rapport HTML écrit dans {html_output}[/]")
     render_rich(result, console)
+
+
+def _maybe_write_sarif(result, sarif_output: Path | None) -> None:
+    if sarif_output is not None:
+        sarif_output.write_text(json.dumps(to_sarif(result), indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 @app.command("install-nuclei")

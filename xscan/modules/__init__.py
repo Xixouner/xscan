@@ -7,6 +7,7 @@ from xscan.modules import (
     exposure,
     fingerprint,
     forms,
+    graphql,
     headers,
     httpdeep,
     nuclei,
@@ -14,6 +15,7 @@ from xscan.modules import (
     ports,
     privacy,
     redirects_open,
+    robots,
     sourcemaps,
     sri,
     subdomains,
@@ -28,5 +30,5 @@ from xscan.modules import (
 ALL_MODULES = [
     transport, headers, fingerprint, dns, subdomains, sri, endpoints, forms,
     exposure, tls_deep, httpdeep, ports, waf, csp_deep, pages, takeover,
-    redirects_open, sourcemaps, xsleaks, privacy, xss_probe, nuclei,
+    redirects_open, sourcemaps, xsleaks, privacy, robots, graphql, xss_probe, nuclei,
 ]

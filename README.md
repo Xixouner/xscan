@@ -19,6 +19,9 @@ xscan scan exemple.com --passive    # modules passifs uniquement
 xscan scan exemple.com --json       # sortie JSON pure (stdout)
 xscan scan exemple.com -o rapport.json
 xscan scan exemple.com --html rapport.html   # rapport HTML autonome (pour un client)
+xscan scan exemple.com --sarif rapport.sarif # SARIF 2.1.0 (GitHub Code Scanning)
+xscan scan app.exemple.com --cookie "session=abc"    # scan authentifié
+xscan scan app.exemple.com -H "Authorization: Bearer xxx"
 xscan diff ancien.json recent.json  # nouveaux constats / résolus / évolution du score
 xscan modules                       # liste des modules
 ```
@@ -67,7 +70,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
