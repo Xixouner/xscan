@@ -28,7 +28,7 @@ async def run(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
     if shutil.which("nuclei") is None:
         return [Finding(f"{_ID}-000", name, Severity.INFO, "nuclei non installé, orchestration ignorée",
                         "nuclei absent du PATH",
-                        "Installer nuclei (https://github.com/projectdiscovery/nuclei) pour activer ce module.")]
+                        "Lancer `xscan install-nuclei` pour l'installer automatiquement.")]
     try:
         process = await asyncio.create_subprocess_exec(
             "nuclei", "-u", base_url, "-json", "-silent", "-nc", "-rl", str(_RATE_LIMIT), "-duc",

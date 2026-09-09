@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import httpx
@@ -16,6 +18,7 @@ from xscan.modules import ALL_MODULES
 from xscan.output import render_diff, render_json, render_rich
 from xscan.report_html import render_html
 from xscan.runner import run_scan
+from xscan.setup_nuclei import install as install_nuclei_binary
 
 app = typer.Typer(
     help="xscan — analyse de sécurité web agent-first (sortie Rich ou JSON).",
@@ -87,6 +90,32 @@ def scan(
     if html_output:
         console.print(f"[dim]Rapport HTML écrit dans {html_output}[/]")
     render_rich(result, console)
+
+
+@app.command("install-nuclei")
+def install_nuclei() -> None:
+    """Télécharge et installe nuclei (binaire officiel + templates)."""
+    existing = shutil.which("nuclei")
+    if existing:
+        console.print(f"[green]nuclei déjà installé :[/] {existing}")
+        return
+    console.print("Téléchargement de la dernière release nuclei (projectdiscovery)…")
+    try:
+        path = install_nuclei_binary()
+    except (RuntimeError, httpx.HTTPError) as exc:
+        console.print(f"[red]Échec de l'installation :[/] {exc}")
+        raise typer.Exit(1) from exc
+    console.print(f"[green]Binaire installé :[/] {path}")
+    if path.rsplit("/", 1)[0] not in __import__("os").environ.get("PATH", ""):
+        console.print(f"[yellow]Attention : {path.rsplit('/', 1)[0]} n'est pas dans le PATH — "
+                      f"ajoute-le (export PATH=$PATH:~/.local/bin).[/]")
+    console.print("Téléchargement des templates (peut prendre une minute)…")
+    result = subprocess.run([path, "-ut", "-silent"], capture_output=True, text=True, timeout=300, check=False)
+    if result.returncode != 0:
+        console.print(f"[yellow]Templates : le téléchargement a signalé un problème[/] "
+                      f"({result.stderr.strip()[:120]}) — réessaie plus tard avec `nuclei -ut`.")
+        return
+    console.print("[green]Templates installés.[/] Le module nuclei est maintenant actif dans les scans.")
 
 
 def _load_report(path: Path) -> dict:

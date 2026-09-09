@@ -23,6 +23,16 @@ xscan diff ancien.json recent.json  # nouveaux constats / résolus / évolution 
 xscan modules                       # liste des modules
 ```
 
+### nuclei (optionnel)
+
+Le module `nuclei` ajoute ~10 000 templates de détection communautaires (CVE, panneaux exposés, misconfigurations). Un seul appel l'installe :
+
+```bash
+xscan install-nuclei    # binaire officiel (~/.local/bin) + templates
+```
+
+Sans nuclei, le module se désactive proprement (finding info) — tous les autres modules continuent de fonctionner.
+
 ## Modules
 
 | Module | Passif | Contenu |
@@ -43,7 +53,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
