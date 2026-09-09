@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import re
 
 import httpx
 
+from xscan import web
 from xscan.models import Finding, Severity
 
 name = "xss_probe"
@@ -34,7 +34,7 @@ def candidate_links(html_text: str, page_url: str) -> list[str]:
     """Logique pure (testée) : liens internes avec paramètres, marqueur injecté."""
     base = httpx.URL(page_url)
     candidates: list[str] = []
-    for href in re.findall(r"""href=["']([^"'#]+)""", html_text, re.IGNORECASE):
+    for href in web.extract_hrefs(html_text):
         try:
             link = base.join(href)
         except ValueError:

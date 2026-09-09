@@ -5,6 +5,7 @@ import re
 
 import httpx
 
+from xscan import web
 from xscan.models import Finding, Severity
 
 name = "exposure"
@@ -34,8 +35,6 @@ _SECRET_PATTERNS = [
     ("Clé Google API", Severity.HIGH, re.compile(r"AIza[0-9A-Za-z_-]{35}")),
     ("Clé privée", Severity.CRITICAL, re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
 ]
-_SCRIPT_RE = re.compile(r"""<script[^>]+src=["']([^"']+)["']""", re.IGNORECASE)
-
 
 async def run(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
     findings = await _page_secrets(client, base_url)
@@ -79,7 +78,7 @@ async def _fetch_many(client: httpx.AsyncClient, urls: list[str], limit: int) ->
 
 
 def _script_urls(base_url: str, html: str) -> list[str]:
-    return [str(httpx.URL(base_url).join(src)) for src in _SCRIPT_RE.findall(html)]
+    return [str(web.resolve(base_url, src)) for src in web.extract_script_srcs(html)]
 
 
 def _scan_text(text: str) -> list[tuple[str, Severity, str]]:

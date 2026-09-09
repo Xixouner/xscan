@@ -11,6 +11,19 @@ def _module(name: str, ids: list[str]) -> dict:
                          for i in ids]}
 
 
+def test_diff_severity_change_reported():
+    old = _scan(95, [_module("headers", ["A"])])
+    old["modules"][0]["findings"][0]["severity"] = "low"
+    new = _scan(85, [_module("headers", ["A"])])
+    new["modules"][0]["findings"][0]["severity"] = "medium"
+    report = diff_results(old, new)
+    assert report["added"] == [] and report["resolved"] == []
+    assert len(report["changed"]) == 1
+    assert report["changed"][0]["before"]["severity"] == "low"
+    assert report["changed"][0]["after"]["severity"] == "medium"
+    assert report["delta"] == -10
+
+
 def test_diff_added_resolved_kept_and_delta():
     old = _scan(90, [_module("headers", ["A", "B"])])
     new = _scan(95, [_module("headers", ["B", "C"])])

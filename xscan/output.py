@@ -101,6 +101,17 @@ def render_diff(report: dict, console: Console) -> None:
                          str(finding.get("title", "—")))
     console.print(added)
     console.print(resolved)
+    if report.get("changed"):
+        changed_table = Table(title=f"Constats ayant évolué ({len(report['changed'])})", title_justify="left")
+        for column in ("Module", "Avant", "Après", "Constat"):
+            changed_table.add_column(column, overflow="fold")
+        for change in report["changed"]:
+            before, after = change["before"], change["after"]
+            changed_table.add_row(str(after.get("module", "—")),
+                                  f"[{_severity_style(str(before.get('severity', 'info')))}]{before.get('severity', '—')}[/]",
+                                  f"[{_severity_style(str(after.get('severity', 'info')))}]{after.get('severity', '—')}[/]",
+                                  str(after.get("title", "—")))
+        console.print(changed_table)
     console.print(f"[dim]{report['kept_count']} constat(s) inchangé(s)[/]")
 
 

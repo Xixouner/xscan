@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import re
 
 import httpx
 
+from xscan import web
 from xscan.models import Finding, Severity
 
 name = "redirects_open"
@@ -38,7 +38,7 @@ def candidate_links(html_text: str, page_url: str) -> list[str]:
     """Logique pure (testée) : liens internes contenant un paramètre de redirection."""
     base = httpx.URL(page_url)
     candidates: list[str] = []
-    for href in _hrefs(html_text):
+    for href in web.extract_hrefs(html_text):
         try:
             link = base.join(href)
         except ValueError:
@@ -53,10 +53,6 @@ def candidate_links(html_text: str, page_url: str) -> list[str]:
 
 def _suspect_params(link: httpx.URL) -> list[str]:
     return [param for param in link.params if param.lower() in _PARAMS]
-
-
-def _hrefs(html_text: str) -> list[str]:
-    return re.findall(r"""href=["']([^"'#]+)""", html_text, re.IGNORECASE)
 
 
 async def _test(client: httpx.AsyncClient, link: str) -> list[Finding]:

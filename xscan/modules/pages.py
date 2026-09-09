@@ -5,6 +5,7 @@ import re
 
 import httpx
 
+from xscan import web
 from xscan.models import Finding, Severity
 
 name = "pages"
@@ -61,7 +62,7 @@ def _internal_links(page_url: str, html_text: str) -> list[str]:
     """Logique pure (testée) : liens internes (même host), hors fragments et médias."""
     base = httpx.URL(page_url)
     links: list[str] = []
-    for href in re.findall(r"""href=["']([^"'#]+)""", html_text):
+    for href in web.extract_hrefs(html_text):
         try:
             link = base.join(href)
         except ValueError:

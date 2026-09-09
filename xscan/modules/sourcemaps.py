@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import re
 
 import httpx
 
+from xscan import web
 from xscan.models import Finding, Severity
 
 name = "sourcemaps"
@@ -12,7 +12,6 @@ passive = False
 DESCRIPTION = "Source maps (.map) exposées : fuite du code source original"
 
 _ID = "XSCAN-SMAP"
-_SCRIPT_RE = re.compile(r"""<script[^>]+src=["']([^"']+)["']""", re.IGNORECASE)
 _MAX_SCRIPTS = 8
 
 
@@ -22,7 +21,7 @@ async def run(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
     except httpx.HTTPError:
         return []
     base = httpx.URL(str(page.url))
-    js_urls = [str(base.join(src)) for src in _SCRIPT_RE.findall(page.text)
+    js_urls = [str(base.join(src)) for src in web.extract_script_srcs(page.text)
                if base.join(src).path.endswith(".js")][:_MAX_SCRIPTS]
     probes = [_probe(client, js_url) for js_url in js_urls]
     return [finding for finding in await asyncio.gather(*probes) if finding is not None]

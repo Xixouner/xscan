@@ -1,5 +1,7 @@
 # xscan
 
+[![CI](https://github.com/Xixouner/xscan/actions/workflows/ci.yml/badge.svg)](https://github.com/Xixouner/xscan/actions/workflows/ci.yml)
+
 CLI d'analyse de sécurité web, conçu **agent-first** : sortie JSON déterministe pour être piloté par un agent (Cline, script, CI), rapport lisible `rich` pour l'humain.
 
 > **Avertissement** : n'analyser que des cibles sur lesquelles tu as une autorisation explicite (ton site, un programme de bug bounty dans son scope, un client avec mandat). Scanner sans autorisation est illégal.

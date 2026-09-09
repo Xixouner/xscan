@@ -17,7 +17,7 @@ from xscan.http import build_client
 from xscan.modules import ALL_MODULES
 from xscan.output import render_diff, render_json, render_rich
 from xscan.report_html import render_html
-from xscan.runner import run_scan
+from xscan.runner import load_modules, run_scan
 from xscan.sarif import to_sarif
 from xscan.setup_nuclei import install as install_nuclei_binary
 
@@ -50,9 +50,10 @@ def _normalize(url: str) -> str:
     return str(parsed)
 
 
-async def _scan(target: str, timeout: float, passive_only: bool, extra_headers: dict[str, str] | None = None):
+async def _scan(target: str, timeout: float, passive_only: bool,
+                extra_headers: dict[str, str] | None = None, only: list[str] | None = None):
     async with build_client(timeout, extra_headers) as client:
-        return await run_scan(client, target, passive_only=passive_only)
+        return await run_scan(client, target, passive_only=passive_only, only=only)
 
 
 def _maybe_write_html(result, html_output: Path | None) -> None:
@@ -64,6 +65,8 @@ def _maybe_write_html(result, html_output: Path | None) -> None:
 def scan(
     url: str = typer.Argument(..., help="Cible à analyser (ex: exemple.com)."),
     passive: bool = typer.Option(False, "--passive", help="Modules passifs uniquement."),
+    modules: str | None = typer.Option(None, "--modules", "-m",
+                                       help="Modules à lancer, séparés par des virgules (ex: headers,dns)."),
     json_output: bool = typer.Option(False, "--json", help="JSON pur sur stdout (agents / pipelines)."),
     output: Path | None = typer.Option(None, "--output", "-o", help="Écrit aussi le JSON dans ce fichier."),
     html_output: Path | None = typer.Option(None, "--html", help="Écrit un rapport HTML autonome dans ce fichier."),
@@ -81,8 +84,14 @@ def scan(
         if ":" in raw_header:
             key, value = raw_header.split(":", 1)
             extra_headers[key.strip()] = value.strip()
+    only = [name_value.strip() for name_value in modules.split(",")] if modules else None
+    if only:
+        try:
+            load_modules(False, only)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
     if json_output:
-        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None))
+        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None, only))
         text = render_json(result)
         if output:
             output.write_text(text, encoding="utf-8")
@@ -94,7 +103,7 @@ def scan(
     console.print(f"Cible : [cyan]{target}[/] | modules : {'passifs' if passive else 'tous'}"
                   f"{' | authentifié' if extra_headers else ''}")
     with console.status("Scan en cours…"):
-        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None))
+        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None, only))
     if output:
         output.write_text(render_json(result), encoding="utf-8")
         console.print(f"[dim]JSON écrit dans {output}[/]")
