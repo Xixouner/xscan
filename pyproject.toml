@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xscan"
+version = "0.1.0"
+description = "CLI d'analyse de sécurité web — agent-first (Rich + JSON)"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.15",
+    "rich>=13",
+    "httpx[http2]>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[project.scripts]
+xscan = "xscan.cli:app"
+
+[tool.ruff.lint]
+# B008 : typer.Option() en défaut d'argument est le pattern canonique de typer
+ignore = ["B008"]
+
+[tool.setuptools.packages.find]
+include = ["xscan*"]
