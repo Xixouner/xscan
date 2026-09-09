@@ -48,23 +48,34 @@ async def _page_secrets(client: httpx.AsyncClient, base_url: str) -> list[Findin
         response = await client.get(base_url, follow_redirects=True)
     except httpx.HTTPError:
         return []
-    seen: set[tuple[str, str]] = set()
-    findings: list[Finding] = []
-    for label, severity, masked in _scan_text(response.text):
-        if (label, masked) not in seen:
+    page_hits = _scan_text(response.text)
+    seen = {(label, masked) for label, _, masked in page_hits}
+    findings = [_secret_finding(label, severity, masked, "page principale")
+                for label, severity, masked in page_hits]
+    script_urls = _script_urls(base_url, response.text)[:_MAX_SCRIPTS]
+    sources = await _fetch_many(client, script_urls, limit=4)
+    for url, source in zip(script_urls, sources):
+        for label, severity, masked in _scan_text(source):
+            if (label, masked) in seen:
+                continue
             seen.add((label, masked))
-            findings.append(_secret_finding(label, severity, masked, "page principale"))
-    for script_url in _script_urls(base_url, response.text)[:_MAX_SCRIPTS]:
-        await asyncio.sleep(_DELAY_S)
-        try:
-            script_response = await client.get(script_url, follow_redirects=True)
-        except httpx.HTTPError:
-            continue
-        for label, severity, masked in _scan_text(script_response.text):
-            if (label, masked) not in seen:
-                seen.add((label, masked))
-                findings.append(_secret_finding(label, severity, masked, script_url.rsplit("/", 1)[-1]))
+            findings.append(_secret_finding(label, severity, masked, url.rsplit("/", 1)[-1]))
     return findings
+
+
+async def _fetch_many(client: httpx.AsyncClient, urls: list[str], limit: int) -> list[str]:
+    semaphore = asyncio.Semaphore(limit)
+
+    async def fetch(url: str) -> str:
+        async with semaphore:
+            await asyncio.sleep(_DELAY_S)
+            try:
+                response = await client.get(url, follow_redirects=True)
+            except httpx.HTTPError:
+                return ""
+            return response.text
+
+    return list(await asyncio.gather(*(fetch(url) for url in urls)))
 
 
 def _script_urls(base_url: str, html: str) -> list[str]:
@@ -92,20 +103,25 @@ def _mask(match: str) -> str:
 
 
 async def _sensitive_paths(client: httpx.AsyncClient, base_url: str) -> list[Finding]:
-    findings: list[Finding] = []
-    for index, (path, severity, pattern) in enumerate(_CHECKS):
-        await asyncio.sleep(_DELAY_S)
-        url = str(httpx.URL(base_url).join(path))
-        try:
-            response = await client.get(url, follow_redirects=False)
-        except httpx.HTTPError:
-            continue
-        text = response.text[:4096]
-        if response.status_code == 200 and plausible_content(pattern, text, response.headers):
-            evidence = re.sub(r"\s+", " ", text)[:100]
-            findings.append(Finding(f"{_ID}-{100 + index}", name, severity, f"'{path}' accessible publiquement",
-                                    evidence, "Restreindre l'accès serveur (403) et retirer ces fichiers du déploiement."))
-    return findings
+    semaphore = asyncio.Semaphore(3)
+
+    async def probe(index: int, path: str, severity: Severity, pattern: re.Pattern[str] | None) -> Finding | None:
+        async with semaphore:
+            await asyncio.sleep(_DELAY_S * (index % 3))
+            url = str(httpx.URL(base_url).join(path))
+            try:
+                response = await client.get(url, follow_redirects=False)
+            except httpx.HTTPError:
+                return None
+            text = response.text[:4096]
+            if response.status_code == 200 and plausible_content(pattern, text, response.headers):
+                evidence = re.sub(r"\s+", " ", text)[:100]
+                return Finding(f"{_ID}-{100 + index}", name, severity, f"'{path}' accessible publiquement",
+                               evidence, "Restreindre l'accès serveur (403) et retirer ces fichiers du déploiement.")
+            return None
+
+    probes = [probe(index, path, severity, pattern) for index, (path, severity, pattern) in enumerate(_CHECKS)]
+    return [finding for finding in await asyncio.gather(*probes) if finding]
 
 
 def plausible_content(pattern: re.Pattern[str] | None, text: str, headers: httpx.Headers) -> bool:

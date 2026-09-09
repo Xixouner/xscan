@@ -18,6 +18,8 @@ xscan scan <url>                 # usage humain
 ## Architecture
 - `xscan/models.py` : Finding (id stable, sévérité, preuve, remédiation), ScanResult (score)
 - `xscan/modules/` : un module = un fichier avec `name`, `passive`, `DESCRIPTION`, `run(client, base_url)`. Registry dans `__init__.py` (ALL_MODULES)
+  - phase 1 : transport, headers, fingerprint, exposure
+  - phase 2 : subdomains (crt.sh + DNS), endpoints (JS), forms (HTMLParser stdlib)
 - `xscan/runner.py` : exécution parallèle (gather, return_exceptions) — un module qui plante ne casse pas le scan
 - `xscan/output.py` : rendu Rich + dict JSON stable
 - `xscan/cli.py` : typer ; `--json` => JSON pur sur stdout, rien d'autre

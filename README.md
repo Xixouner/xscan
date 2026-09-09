@@ -21,14 +21,17 @@ xscan scan exemple.com -o rapport.json
 xscan modules                       # liste des modules
 ```
 
-## Modules (phase 1)
+## Modules
 
 | Module | Passif | Contenu |
 |---|---|---|
 | `transport` | oui | TLS (version, expiration de certificat), chaîne de redirection, HTTP/1.1 vs HTTP/2 |
 | `headers` | oui | CSP, HSTS, X-Frame-Options, nosniff, Referrer/Permissions-Policy, flags des cookies, CORS |
 | `fingerprint` | oui | Serveur, framework (Next.js, WordPress…), CDN/analytics, meta generator |
-| `exposure` | non | `.env`, `.git/HEAD`, `.DS_Store`, `server-status`, `/actuator/health`, secrets (AWS, Stripe, GitHub, Slack, Resend, Google) dans les pages et scripts JS |
+| `subdomains` | oui | Sous-domaines via certificate transparency (crt.sh), résolution DNS, noms d'environnements sensibles |
+| `endpoints` | oui | Chemins et endpoints extraits du JavaScript livré (api, admin, config…) |
+| `forms` | oui | Formulaires : CSRF absent, password en GET/HTTP, action cross-origin |
+| `exposure` | non | `.env`, `.git/HEAD`, `.DS_Store`, `server-status`, `/actuator/health`, secrets (AWS, Stripe, GitHub, Slack, Resend, Google) dans les pages et scripts JS — requêtes parallèles (semaphore) |
 
 Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité, une preuve et une remédiation. Le score global part de 100 et baisse selon les sévérités (critique −30, high −20, medium −10, low −5).
 
@@ -37,7 +40,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
@@ -62,7 +65,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 
 ## Roadmap
 
-- **Phase 2 — Recon** : sous-domaines (crt.sh), extraction d'endpoints du JS, analyse de formulaires, parallélisme complet
+- ~~Phase 2 — Recon~~ **fait** : sous-domaines (crt.sh + DNS), endpoints du JS, formulaires, parallélisme
 - **Phase 3 — Pro** : rapport HTML pour clients, orchestration optionnelle de `nuclei`, comparaison entre deux scans
 
 ## Développement
