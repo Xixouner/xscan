@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import flet as ft
@@ -118,7 +118,7 @@ class XscanGui:
         scans = history.list_scans(_RAPPORTS_DIR)
         self.history_dd.options = []
         for path, data in scans:
-            when = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+            when = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).astimezone().strftime("%Y-%m-%d %H:%M")
             label = f"{when} — {data.get('target', '?')} ({data.get('score', '?')}/100)"
             self.history_dd.options.append(ft.DropdownOption(key=str(path), text=label))
         self.history_dd.value = str(scans[0][0]) if scans else None
