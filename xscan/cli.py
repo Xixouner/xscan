@@ -51,9 +51,23 @@ def _normalize(url: str) -> str:
 
 
 async def _scan(target: str, timeout: float, passive_only: bool,
-                extra_headers: dict[str, str] | None = None, only: list[str] | None = None):
+                extra_headers: dict[str, str] | None = None, only: list[str] | None = None,
+                on_event=None):
     async with build_client(timeout, extra_headers) as client:
-        return await run_scan(client, target, passive_only=passive_only, only=only)
+        return await run_scan(client, target, passive_only=passive_only, only=only, on_event=on_event)
+
+
+def _execute_scan(target: str, timeout: float, passive: bool, extra_headers: dict[str, str] | None,
+                  only: list[str] | None, on_event=None):
+    """Lance le scan avec un Ctrl-C propre (exit 130)."""
+    try:
+        return asyncio.run(_scan(target, timeout, passive, extra_headers, only, on_event))
+    except KeyboardInterrupt:
+        if on_event:
+            on_event({"event": "scan_interrupted"})
+        else:
+            console.print("[yellow]Scan interrompu.[/]")
+        raise typer.Exit(130) from None
 
 
 def _maybe_write_html(result, html_output: Path | None) -> None:
@@ -73,6 +87,7 @@ def scan(
     sarif_output: Path | None = typer.Option(None, "--sarif", help="Rapport SARIF 2.1.0 (GitHub Code Scanning)."),
     cookie: str | None = typer.Option(None, "--cookie", help="Cookie de session pour scanner authentifié."),
     header: list[str] = typer.Option([], "--header", "-H", help="En-tête supplémentaire (répétable, 'Nom: valeur')."),
+    stream: bool = typer.Option(False, "--stream", help="Événements JSONL temps réel sur stdout (GUI / agents)."),
     timeout: float = typer.Option(10.0, help="Timeout réseau (secondes)."),
 ) -> None:
     """Scanne une cible et affiche les findings."""
@@ -90,8 +105,14 @@ def scan(
             load_modules(False, only)
         except ValueError as exc:
             raise typer.BadParameter(str(exc)) from exc
+    if stream:
+        def emit(event: dict) -> None:
+            typer.echo(json.dumps(event, ensure_ascii=False))
+
+        _execute_scan(target, timeout, passive, extra_headers or None, only, emit)
+        return
     if json_output:
-        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None, only))
+        result = _execute_scan(target, timeout, passive, extra_headers or None, only)
         text = render_json(result)
         if output:
             output.write_text(text, encoding="utf-8")
@@ -104,7 +125,7 @@ def scan(
     console.print(f"Cible : [cyan]{target}[/] | modules : {'passifs' if passive else 'tous'}"
                   f"{' | authentifié' if extra_headers else ''}")
     with console.status("Scan en cours…"):
-        result = asyncio.run(_scan(target, timeout, passive, extra_headers or None, only))
+        result = _execute_scan(target, timeout, passive, extra_headers or None, only)
     if output:
         output.write_text(render_json(result), encoding="utf-8")
         console.print(f"[dim]JSON écrit dans {output}[/]")

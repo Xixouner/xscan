@@ -8,3 +8,10 @@ dist/
 .ruff_cache/
 .env
 .DS_Store
+
+# Rapports d'audit : confidentiels (clients), jamais versionnés
+rapports/
+*.sarif
+
+# Kit commercial perso (mandat, prospection) — reste local
+kit-audit/
