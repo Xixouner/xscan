@@ -11,7 +11,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from xscan import __version__
+from xscan import __version__, web
 from xscan.diff import diff_results
 from xscan.http import build_client
 from xscan.modules import ALL_MODULES
@@ -43,11 +43,10 @@ def main(
 
 
 def _normalize(url: str) -> str:
-    candidate = url if "://" in url else f"https://{url}"
-    parsed = httpx.URL(candidate)
-    if parsed.scheme not in ("http", "https") or not parsed.host:
-        raise typer.BadParameter(f"URL invalide : {url}")
-    return str(parsed)
+    try:
+        return web.normalize_target(url)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 async def _scan(target: str, timeout: float, passive_only: bool,

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import flet as ft
 
-from xscan import __version__
+from xscan import __version__, web
 from xscan.http import build_client
 from xscan.models import ScanResult
 from xscan.modules import ALL_MODULES
@@ -111,7 +111,13 @@ class XscanGui:
     def _run_clicked(self, _event=None) -> None:
         if self.state["scanning"]:
             return
-        target = (self.url.value or "").strip()
+        raw = (self.url.value or "").strip()
+        try:
+            target = web.normalize_target(raw)
+        except ValueError as exc:
+            self.status.value = str(exc)
+            self.page.update()
+            return
         if not target:
             self.status.value = "Renseigne une cible (ex: exemple.com)."
             self.page.update()

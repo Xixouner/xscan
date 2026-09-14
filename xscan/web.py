@@ -21,3 +21,16 @@ def extract_hrefs(html_text: str) -> list[str]:
 def resolve(page_url: str, target: str) -> httpx.URL:
     """Résout un href/src relatif ou absolu contre l'URL de la page."""
     return httpx.URL(page_url).join(target)
+
+
+def normalize_target(url: str) -> str:
+    """Normalise une cible saisie par un humain : ajoute https:// si absent.
+
+    Lève ValueError si le schéma ou l'hôte est invalide — appelée par le CLI
+    et la GUI pour que « exemple.com » fonctionne partout pareil.
+    """
+    candidate = url if "://" in url else f"https://{url}"
+    parsed = httpx.URL(candidate)
+    if parsed.scheme not in ("http", "https") or not parsed.host:
+        raise ValueError(f"URL invalide : {url}")
+    return str(parsed)
