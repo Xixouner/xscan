@@ -69,9 +69,15 @@ def _execute_scan(target: str, timeout: float, passive: bool, extra_headers: dic
         raise typer.Exit(130) from None
 
 
+def _write_report(path: Path, content: str) -> None:
+    """Écrit un rapport en recréant le dossier parent s'il a disparu."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
 def _maybe_write_html(result, html_output: Path | None) -> None:
     if html_output is not None:
-        html_output.write_text(render_html(result), encoding="utf-8")
+        _write_report(html_output, render_html(result))
 
 
 @app.command()
@@ -114,7 +120,7 @@ def scan(
         result = _execute_scan(target, timeout, passive, extra_headers or None, only)
         text = render_json(result)
         if output:
-            output.write_text(text, encoding="utf-8")
+            _write_report(output, text)
         _maybe_write_sarif(result, sarif_output)
         _maybe_write_html(result, html_output)
         typer.echo(text)
@@ -126,7 +132,7 @@ def scan(
     with console.status("Scan en cours…"):
         result = _execute_scan(target, timeout, passive, extra_headers or None, only)
     if output:
-        output.write_text(render_json(result), encoding="utf-8")
+        _write_report(output, render_json(result))
         console.print(f"[dim]JSON écrit dans {output}[/]")
     _maybe_write_sarif(result, sarif_output)
     if sarif_output:
@@ -139,7 +145,7 @@ def scan(
 
 def _maybe_write_sarif(result, sarif_output: Path | None) -> None:
     if sarif_output is not None:
-        sarif_output.write_text(json.dumps(to_sarif(result), indent=2, ensure_ascii=False), encoding="utf-8")
+        _write_report(sarif_output, json.dumps(to_sarif(result), indent=2, ensure_ascii=False))
 
 
 @app.command("install-nuclei")
