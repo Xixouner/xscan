@@ -8,11 +8,12 @@ from __future__ import annotations
 import asyncio
 import json
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 import flet as ft
 
-from xscan import __version__, web
+from xscan import __version__, history, web
 from xscan.http import build_client
 from xscan.models import ScanResult
 from xscan.modules import ALL_MODULES
@@ -35,11 +36,7 @@ def _score_color(score: int) -> str:
 
 
 def _safe_name(target: str) -> str:
-    try:
-        import httpx as _httpx
-        return (_httpx.URL(target if "://" in target else f"https://{target}").host or "scan").replace(".", "_")
-    except Exception:  # noqa: BLE001
-        return "scan"
+    return history.slugify_target(target)
 
 
 def _finding_row(finding: dict) -> ft.Row:
@@ -87,6 +84,9 @@ class XscanGui:
         self.json_btn = ft.ElevatedButton("JSON", on_click=lambda e: self._export("json"), disabled=True)
         self.html_btn = ft.ElevatedButton("HTML", on_click=lambda e: self._export("html"), disabled=True)
         self.sarif_btn = ft.ElevatedButton("SARIF", on_click=lambda e: self._export("sarif"), disabled=True)
+        self.history_dd = ft.Dropdown(label="Historique des scans", expand=True)
+        self.open_btn = ft.ElevatedButton("Ouvrir", on_click=self._open_history, disabled=True)
+        self.delete_btn = ft.ElevatedButton("Supprimer", on_click=self._delete_history, disabled=True)
         header = ft.Row([
             ft.Text(f"xscan {__version__}", size=20, weight=ft.FontWeight.BOLD),
             ft.Container(expand=True),
@@ -104,7 +104,51 @@ class XscanGui:
                     ft.Container(expand=True),
                     self.json_btn, self.html_btn, self.sarif_btn]),
             self.findings_view,
+            ft.Divider(),
+            ft.Row([ft.Text("Historique", size=16, weight=ft.FontWeight.BOLD),
+                    ft.Container(expand=True),
+                    self.open_btn, self.delete_btn]),
+            ft.Row([self.history_dd]),
         )
+        self._refresh_history()
+
+    # ---------- historique ----------
+
+    def _refresh_history(self) -> None:
+        scans = history.list_scans(_RAPPORTS_DIR)
+        self.history_dd.options = []
+        for path, data in scans:
+            when = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M")
+            label = f"{when} — {data.get('target', '?')} ({data.get('score', '?')}/100)"
+            self.history_dd.options.append(ft.DropdownOption(key=str(path), text=label))
+        self.history_dd.value = str(scans[0][0]) if scans else None
+        self.open_btn.disabled = not scans
+        self.delete_btn.disabled = not scans
+        self.page.update()
+
+    def _open_history(self, _event=None) -> None:
+        key = self.history_dd.value
+        if not key:
+            return
+        result = history.load_scan(Path(key))
+        self.state["result"] = result
+        self.score_text.value = f"{result.score()}/100"
+        self.score_box.bgcolor = _score_color(result.score())
+        self.findings_view.controls = [
+            _finding_row({"severity": finding.severity.value, "title": finding.title})
+            for finding in result.findings()
+        ]
+        for button in (self.json_btn, self.html_btn, self.sarif_btn):
+            button.disabled = False
+        self.status.value = f"Scan chargé : {result.target} ({result.duration_s}s) — exports disponibles."
+        self.page.update()
+
+    def _delete_history(self, _event=None) -> None:
+        if self.history_dd.value:
+            history.delete_scan(Path(self.history_dd.value))
+            self._refresh_history()
+            self.status.value = "Scan supprimé de l'historique."
+            self.page.update()
 
     # ---------- scan ----------
 
@@ -145,6 +189,7 @@ class XscanGui:
 
         try:
             self.state["result"] = asyncio.run(job())
+            history.save_scan(self.state["result"], _RAPPORTS_DIR)
         except Exception as exc:  # noqa: BLE001
             self.status.value = f"Échec : {exc}"
         finally:
@@ -153,6 +198,7 @@ class XscanGui:
             self.run_btn.disabled = False
             for button in (self.json_btn, self.html_btn, self.sarif_btn):
                 button.disabled = self.state["result"] is None
+            self._refresh_history()
             self.page.update()
 
     def _handle_event(self, event: dict) -> None:
