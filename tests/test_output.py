@@ -11,7 +11,7 @@ def test_markdown_contains_target_score_and_findings():
     assert "https://t.test" in markdown
     assert "90/100" in markdown
     assert "XSCAN-DNS-001" in markdown
-    assert "| medium | dns |" in markdown
+    assert "| XSCAN-DNS-001 | medium | dns |" in markdown
 
 
 def test_markdown_escapes_pipes_in_cells():

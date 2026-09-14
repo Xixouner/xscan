@@ -128,13 +128,13 @@ def to_markdown(result: ScanResult) -> str:
         f"- **Score** : {result.score()}/100",
         f"- **Durée** : {result.duration_s}s",
         "",
-        "| Sévérité | Module | Constat | Preuve | Remédiation |",
-        "| --- | --- | --- | --- | --- |",
+        "| ID | Sévérité | Module | Constat | Preuve | Remédiation |",
+        "| --- | --- | --- | --- | --- | --- |",
     ]
     for module_result in result.results:
         for finding in module_result.findings:
             lines.append(
-                f"| {finding.severity.value} | {module_result.module} | {cell(finding.title)} | "
+                f"| {cell(finding.id)} | {finding.severity.value} | {module_result.module} | {cell(finding.title)} | "
                 f"{cell(finding.evidence[:80])} | {cell(finding.remediation[:80])} |"
             )
     return "\n".join(lines)
