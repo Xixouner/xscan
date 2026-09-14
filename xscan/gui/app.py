@@ -17,7 +17,7 @@ from xscan import __version__, history, web
 from xscan.http import build_client
 from xscan.models import ScanResult
 from xscan.modules import ALL_MODULES
-from xscan.output import result_to_dict
+from xscan.output import result_to_dict, to_markdown
 from xscan.report_html import render_html
 from xscan.runner import run_scan
 from xscan.sarif import to_sarif
@@ -84,6 +84,9 @@ class XscanGui:
         self.json_btn = ft.ElevatedButton("JSON", on_click=lambda e: self._export("json"), disabled=True)
         self.html_btn = ft.ElevatedButton("HTML", on_click=lambda e: self._export("html"), disabled=True)
         self.sarif_btn = ft.ElevatedButton("SARIF", on_click=lambda e: self._export("sarif"), disabled=True)
+        self.copy_btn = ft.ElevatedButton("Copier pour LLM", on_click=self._copy_clicked,
+                                          icon=ft.Icons.CONTENT_COPY, disabled=True)
+        self.export_buttons = (self.json_btn, self.html_btn, self.sarif_btn, self.copy_btn)
         self.history_dd = ft.Dropdown(label="Historique des scans", expand=True)
         self.open_btn = ft.ElevatedButton("Ouvrir", on_click=self._open_history, disabled=True)
         self.delete_btn = ft.ElevatedButton("Supprimer", on_click=self._delete_history, disabled=True)
@@ -102,7 +105,7 @@ class XscanGui:
             ft.Divider(),
             ft.Row([ft.Text("Constats", size=16, weight=ft.FontWeight.BOLD),
                     ft.Container(expand=True),
-                    self.json_btn, self.html_btn, self.sarif_btn]),
+                    self.copy_btn, self.json_btn, self.html_btn, self.sarif_btn]),
             self.findings_view,
             ft.Divider(),
             ft.Row([ft.Text("Historique", size=16, weight=ft.FontWeight.BOLD),
@@ -138,7 +141,7 @@ class XscanGui:
             _finding_row({"severity": finding.severity.value, "title": finding.title})
             for finding in result.findings()
         ]
-        for button in (self.json_btn, self.html_btn, self.sarif_btn):
+        for button in self.export_buttons:
             button.disabled = False
         self.status.value = f"Scan chargé : {result.target} ({result.duration_s}s) — exports disponibles."
         self.page.update()
@@ -196,10 +199,21 @@ class XscanGui:
             self.state["scanning"] = False
             self.progress.visible = False
             self.run_btn.disabled = False
-            for button in (self.json_btn, self.html_btn, self.sarif_btn):
+            for button in self.export_buttons:
                 button.disabled = self.state["result"] is None
             self._refresh_history()
             self.page.update()
+
+    async def _copy_clicked(self, _event=None) -> None:
+        result: ScanResult | None = self.state.get("result")
+        if result is None:
+            return
+        try:
+            await self.page.clipboard.set(to_markdown(result))
+            self.status.value = "Rapport copié — colle-le à ton LLM."
+        except Exception as exc:  # noqa: BLE001
+            self.status.value = f"Presse-papier indisponible : {exc}"
+        self.page.update()
 
     def _handle_event(self, event: dict) -> None:
         kind = event["event"]

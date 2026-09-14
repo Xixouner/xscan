@@ -115,5 +115,30 @@ def render_diff(report: dict, console: Console) -> None:
     console.print(f"[dim]{report['kept_count']} constat(s) inchangé(s)[/]")
 
 
+def to_markdown(result: ScanResult) -> str:
+    """Résumé markdown du scan, formaté pour être collé dans un LLM."""
+
+    def cell(text: str) -> str:
+        return (text or "—").replace("|", "\\|").replace("\n", " ")
+
+    lines = [
+        f"# Rapport de sécurité xscan {__version__}",
+        "",
+        f"- **Cible** : {result.target}",
+        f"- **Score** : {result.score()}/100",
+        f"- **Durée** : {result.duration_s}s",
+        "",
+        "| Sévérité | Module | Constat | Preuve | Remédiation |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for module_result in result.results:
+        for finding in module_result.findings:
+            lines.append(
+                f"| {finding.severity.value} | {module_result.module} | {cell(finding.title)} | "
+                f"{cell(finding.evidence[:80])} | {cell(finding.remediation[:80])} |"
+            )
+    return "\n".join(lines)
+
+
 def render_json(result: ScanResult) -> str:
     return json.dumps(result_to_dict(result), indent=2, ensure_ascii=False)
