@@ -23,5 +23,13 @@ def test_dmarc_absent_is_medium():
     assert findings[0].id == "XSCAN-DNS-003"
 
 
+def test_spf_found_despite_doh_quotes():
+    """Les TXT reviennent quotés par le DoH — le SPF doit quand même être détecté (bug google.com)."""
+    txt = ['"docusign=abc"', '"v=spf1 include:_spf.google.com ~all"']
+    findings = spf_findings(txt)
+    assert findings == []  # SPF présent et correct : aucun constat
+
+
 def test_dmarc_present_no_finding():
     assert dmarc_findings(["v=DMARC1; p=quarantine; rua=mailto:x@t.test"]) == []
+

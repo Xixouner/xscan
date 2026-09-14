@@ -36,8 +36,8 @@ async def _dkim_probe(client: httpx.AsyncClient, domain: str) -> list[Finding]:
 
 
 def spf_findings(txt_records: list[str]) -> list[Finding]:
-    """Logique pure (testée) : SPF absent ou permissif."""
-    spf = [record for record in txt_records if record.lower().startswith("v=spf1")]
+    """Logique pure (testée) : SPF absent ou permissif. Tolère les quotes DoH."""
+    spf = [record for record in txt_records if record.strip('"').lower().startswith("v=spf1")]
     if not spf:
         return [Finding(f"{_ID}-001", name, Severity.MEDIUM, "Aucun enregistrement SPF : emails usurpables",
                         "TXT v=spf1 absent", "Publier un SPF (ex: v=spf1 include:provider.com -all).")]

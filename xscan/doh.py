@@ -6,7 +6,11 @@ _DOH = "https://cloudflare-dns.com/dns-query"
 
 
 async def dns_query(client: httpx.AsyncClient, name: str, rrtype: str) -> list[str]:
-    """Requête DNS-over-HTTPS (Cloudflare, JSON). [] si erreur, NXDOMAIN ou timeout."""
+    """Requête DNS-over-HTTPS (Cloudflare, JSON). [] si erreur, NXDOMAIN ou timeout.
+
+    Les valeurs TXT reviennent quotées par le DoH (artefact de représentation) —
+    on retire les guillemets englobants et on rejoint les segments multi-chaînes.
+    """
     try:
         response = await client.get(
             _DOH, params={"name": name, "type": rrtype},
@@ -22,4 +26,5 @@ async def dns_query(client: httpx.AsyncClient, name: str, rrtype: str) -> list[s
         return []
     if data.get("Status") != 0:
         return []
-    return [str(answer.get("data", "")) for answer in data.get("Answer", [])]
+    return [str(answer.get("data", "")).replace('" "', "").strip('"')
+            for answer in data.get("Answer", [])]
