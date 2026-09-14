@@ -38,6 +38,17 @@ xscan install-nuclei    # binaire officiel (~/.local/bin) + templates
 
 Sans nuclei, le module se désactive proprement (finding info) — tous les autres modules continuent de fonctionner.
 
+## GUI (desktop)
+
+```bash
+pip install -e ".[gui]"
+xscan-gui
+```
+
+La fenêtre reflète le CLI : cible, options (passif, modules, authentifié), progression
+live par module, constats par sévérité, exports JSON/HTML/SARIF. Le scan tourne dans un
+thread et consomme les mêmes événements que `--stream`.
+
 ## Modules
 
 | Module | Passif | Contenu |
@@ -72,7 +83,7 @@ Chaque finding porte un **ID stable** (`XSCAN-<MODULE>-<num>`), une sévérité,
 ```json
 {
   "tool": "xscan",
-  "version": "0.9.1",
+  "version": "0.11.0",
   "target": "https://exemple.com",
   "score": 78,
   "summary": {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4},
