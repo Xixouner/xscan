@@ -84,12 +84,11 @@ class XscanGui:
         self.json_btn = ft.ElevatedButton("JSON", on_click=lambda e: self._export("json"), disabled=True)
         self.html_btn = ft.ElevatedButton("HTML", on_click=lambda e: self._export("html"), disabled=True)
         self.sarif_btn = ft.ElevatedButton("SARIF", on_click=lambda e: self._export("sarif"), disabled=True)
-        self.copy_btn = ft.ElevatedButton("Copier pour LLM", on_click=self._copy_clicked,
+        self.copy_btn = ft.ElevatedButton("Copier", on_click=self._copy_clicked,
                                           icon=ft.Icons.CONTENT_COPY, disabled=True)
         self.export_buttons = (self.json_btn, self.html_btn, self.sarif_btn, self.copy_btn)
-        self.history_dd = ft.Dropdown(label="Historique des scans", expand=True)
-        self.open_btn = ft.ElevatedButton("Ouvrir", on_click=self._open_history, disabled=True)
-        self.delete_btn = ft.ElevatedButton("Supprimer", on_click=self._delete_history, disabled=True)
+        self.history_view = ft.ListView(height=190, spacing=4)
+        self.delete_btn = ft.ElevatedButton("Supprimer la sélection", on_click=self._delete_selected, disabled=True)
         header = ft.Row([
             ft.Text(f"xscan {__version__}", size=20, weight=ft.FontWeight.BOLD),
             ft.Container(expand=True),
@@ -110,30 +109,32 @@ class XscanGui:
             ft.Divider(),
             ft.Row([ft.Text("Historique", size=16, weight=ft.FontWeight.BOLD),
                     ft.Container(expand=True),
-                    self.open_btn, self.delete_btn]),
-            ft.Row([self.history_dd]),
+                    self.delete_btn]),
+            self.history_view,
         )
         self._refresh_history()
 
     # ---------- historique ----------
 
     def _refresh_history(self) -> None:
-        scans = history.list_scans(_RAPPORTS_DIR)
-        self.history_dd.options = []
-        for path, data in scans:
+        self.history_checks: dict[str, ft.Checkbox] = {}
+        rows = []
+        for path, data in history.list_scans(_RAPPORTS_DIR):
             when = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).astimezone().strftime("%Y-%m-%d %H:%M")
             label = f"{when} — {data.get('target', '?')} ({data.get('score', '?')}/100)"
-            self.history_dd.options.append(ft.DropdownOption(key=str(path), text=label))
-        self.history_dd.value = str(scans[0][0]) if scans else None
-        self.open_btn.disabled = not scans
-        self.delete_btn.disabled = not scans
+            checkbox = ft.Checkbox(value=False)
+            self.history_checks[str(path)] = checkbox
+            rows.append(ft.Row([
+                checkbox,
+                ft.Text(label, size=12, expand=True),
+                ft.TextButton("Ouvrir", on_click=lambda _e, p=str(path): self._open_history(p)),
+            ]))
+        self.history_view.controls = rows
+        self.delete_btn.disabled = not rows
         self.page.update()
 
-    def _open_history(self, _event=None) -> None:
-        key = self.history_dd.value
-        if not key:
-            return
-        result = history.load_scan(Path(key))
+    def _open_history(self, path: str) -> None:
+        result = history.load_scan(Path(path))
         self.state["result"] = result
         self.score_text.value = f"{result.score()}/100"
         self.score_box.bgcolor = _score_color(result.score())
@@ -146,12 +147,17 @@ class XscanGui:
         self.status.value = f"Scan chargé : {result.target} ({result.duration_s}s) — exports disponibles."
         self.page.update()
 
-    def _delete_history(self, _event=None) -> None:
-        if self.history_dd.value:
-            history.delete_scan(Path(self.history_dd.value))
-            self._refresh_history()
-            self.status.value = "Scan supprimé de l'historique."
-            self.page.update()
+    def _delete_selected(self, _event=None) -> None:
+        deleted = 0
+        for key, checkbox in list(self.history_checks.items()):
+            if checkbox.value:
+                history.delete_scan(Path(key))
+                deleted += 1
+        self._refresh_history()
+        self.status.value = f"{deleted} scan(s) supprimé(s) de l'historique."
+        self.page.update()
+
+    # ---------- scan ----------
 
     # ---------- scan ----------
 
